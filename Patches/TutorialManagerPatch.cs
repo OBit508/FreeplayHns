@@ -17,8 +17,7 @@ namespace FreeplayHns.Patches
     internal static class TutorialManagerPatch
     {
         public static bool CustomHideAndSeek;
-        public static int ImpostorCount = 2;
-        public static int CrewmateCount = 30;
+        public static bool AmCrewmate;
         public static bool Prefix(TutorialManager __instance)
         {
             if (CustomHideAndSeek)
@@ -66,11 +65,12 @@ namespace FreeplayHns.Patches
             }
             HideNSeekGameOptionsV10 normalGameOptionsV = new HideNSeekGameOptionsV10(new UnityLogger().Cast<Hazel.ILogger>());
             normalGameOptionsV.SetInt(Int32OptionNames.NumImpostors, 1);
-            normalGameOptionsV.SetInt(Int32OptionNames.CrewmateVentUses, 5);
+            normalGameOptionsV.SetInt(Int32OptionNames.CrewmateVentUses, 3);
             GameOptionsManager.Instance.CurrentGameOptions = normalGameOptionsV.Cast<IGameOptions>();
-            PlayerControl.LocalPlayer.RpcSetRole(RoleTypes.Engineer, false);
+            PlayerControl.LocalPlayer.RpcSetRole(AmCrewmate ? RoleTypes.Engineer : RoleTypes.Impostor, false);
             PlayerControl.LocalPlayer.AdjustLighting();
             PlayerControl.LocalPlayer.cosmetics.SetAsLocalPlayer();
+            PlayerControl.LocalPlayer.moveable = AmCrewmate;
             switch (AmongUsClient.Instance.TutorialMapId)
             {
                 case 0:
@@ -99,9 +99,8 @@ namespace FreeplayHns.Patches
         }
         public static void CreatePlayers()
         {
-            int a = 1;
             System.Random random = new System.Random();
-            for (int i = 0; i < ImpostorCount; i++)
+            if (AmCrewmate)
             {
                 PlayerControl playerControl = GameObject.Instantiate<PlayerControl>(TutorialManager.Instance.PlayerPrefab);
                 playerControl.PlayerId = (byte)GameData.Instance.GetAvailableId();
@@ -111,7 +110,7 @@ namespace FreeplayHns.Patches
                 playerControl.isDummy = true;
                 playerControl.GetComponent<DummyBehaviour>().enabled = true;
                 playerControl.NetTransform.enabled = false;
-                playerControl.SetName("Impostor " + (i + 1).ToString());
+                playerControl.SetName("Impostor");
                 byte b = (byte)random.Next(0, Palette.ColorNames.Count - 1);
                 playerControl.SetColor((int)b);
                 playerControl.SetHat("", (int)b);
@@ -122,11 +121,11 @@ namespace FreeplayHns.Patches
                 playerControl.SetLevel(0U);
                 playerControl.RpcSetRole(RoleTypes.Impostor);
                 networkedPlayerInfo.RpcSetTasks(new byte[0]);
-                ShipStatus.Instance.SpawnPlayer(playerControl, a, false);
+                ShipStatus.Instance.SpawnPlayer(playerControl, 1, true);
+                playerControl.moveable = false;
                 playerControl.gameObject.AddComponent<ImpostorComp>();
-                a++;
             }
-            for (int i = 0; i < CrewmateCount; i++)
+            for (int i = 0; i < (AmCrewmate ? 13 : 14); i++)
             {
                 PlayerControl playerControl = GameObject.Instantiate<PlayerControl>(TutorialManager.Instance.PlayerPrefab);
                 playerControl.PlayerId = (byte)GameData.Instance.GetAvailableId();
@@ -146,10 +145,18 @@ namespace FreeplayHns.Patches
                 playerControl.SetNamePlate("");
                 playerControl.SetLevel(0U);
                 playerControl.RpcSetRole(RoleTypes.Engineer);
-                networkedPlayerInfo.RpcSetTasks(new byte[0]);
-                ShipStatus.Instance.SpawnPlayer(playerControl, a, false);
+                List<byte> tasks = new List<byte>();
+                List<PlayerTask> prefabs = ShipStatus.Instance.GetAllTasks().ToList();
+                while (tasks.Count < 5 && prefabs.Count > 0)
+                {
+                    int index = random.Next(0, prefabs.Count - 1);
+                    PlayerTask t = prefabs[index];                    
+                    tasks.Add((byte)t.Index);
+                    prefabs.RemoveAt(index);
+                }
+                playerControl.Data.SetTasks(tasks.ToArray());
+                ShipStatus.Instance.SpawnPlayer(playerControl, PlayerControl.AllPlayerControls.Count, true);
                 playerControl.gameObject.AddComponent<CrewmateComp>();
-                a++;
             }
         }
     }

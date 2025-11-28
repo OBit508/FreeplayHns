@@ -1,4 +1,5 @@
 ﻿using BepInEx.Unity.IL2CPP.Utils.Collections;
+using Il2CppSystem.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,10 +16,10 @@ namespace FreeplayHns.Components
         public List<PlayerControl> Impostors = new List<PlayerControl>();
         private Vector2 lastPos;
         private float stuckTimer = 0f;
-        private float dangerDistance = 4.5f;
         private bool fleeing = false;
         private float fleeRecalcTimer = 0f;
-        public bool FirstRun;
+        public float taskTimer;
+        public NormalPlayerTask task;
         public void Start()
         {
             Player = GetComponent<PlayerControl>();
@@ -31,28 +32,26 @@ namespace FreeplayHns.Components
                     Impostors.Add(player);
                 }
             }
-            RecalculateRandomPath();
-            FirstRun = true;
         }
         public void Update()
         {
             if (!Player.Data.IsDead)
             {
                 MoveAlongPath();
-                DetectStuck();
-                if (!FirstRun)
+                if (task == null)
                 {
-                    TryDetectImpostors();
+                    DetectStuck();
                 }
+                TryDetectImpostors();
             }
         }
         public void TryDetectImpostors()
         {
             PlayerControl nearest = null;
             float bestDist = float.MaxValue;
-            foreach (var imp in Impostors)
+            foreach (PlayerControl imp in Impostors)
             {
-                if (imp != null)
+                if (imp != null && imp.moveable)
                 {
                     float d = Vector2.Distance(transform.position, imp.transform.position);
                     if (d < bestDist)
@@ -62,11 +61,11 @@ namespace FreeplayHns.Components
                     }
                 }
             }
-            if (nearest != null && bestDist <= dangerDistance)
+            if (nearest != null && bestDist <= 4.5f)
             {
                 fleeing = true;
                 fleeRecalcTimer -= Time.deltaTime;
-                if (fleeRecalcTimer <= 0f || Path == null || Path.Count == 0)
+                if (fleeRecalcTimer <= 0 || Path == null || Path.Count == 0)
                 {
                     RecalculateFleePath(nearest.transform.position);
                     fleeRecalcTimer = 0.4f;
@@ -77,16 +76,33 @@ namespace FreeplayHns.Components
                 fleeing = false;
             }
         }
+        public void DoTask()
+        {
+            if (task != null)
+            {
+                taskTimer -= Time.deltaTime;
+                if (taskTimer <= 0)
+                {
+                    task.Owner.CompleteTask(task.Id);
+                    task = null;
+                    RecalculateRandomPath();
+                }
+            }
+        }
         public void MoveAlongPath()
         {
             if (Path == null || Path.Count == 0)
             {
+                if (task != null)
+                {
+                    DoTask();
+                }
                 Player.rigidbody2D.velocity = Vector2.zero;
                 return;
             }
-            Vector2 target = Path[0].Position;
-            Player.rigidbody2D.velocity = (target - (Vector2)transform.position).normalized * Player.MyPhysics.Speed;
-            if (Vector2.Distance(transform.position, target) < 0.35f)
+            Point target = Path[0];
+            Player.rigidbody2D.velocity = (target.Position - (Vector2)transform.position).normalized * Player.MyPhysics.TrueSpeed;
+            if (Vector2.Distance(transform.position, target.Position) < 0.35f)
             {
                 Path.RemoveAt(0);
             }
@@ -108,7 +124,13 @@ namespace FreeplayHns.Components
                 {
                     PlayerControl nearest = GetClosestImpostor();
                     if (nearest != null)
+                    {
                         RecalculateFleePath(nearest.transform.position);
+                    }
+                }
+                else if (task != null)
+                {
+                    RecalculateTaskPath();
                 }
                 else
                 {
@@ -119,15 +141,16 @@ namespace FreeplayHns.Components
         }
         public void RecalculateFleePath(Vector2 impostorPos)
         {
+            task = null;
             try
             {
-                var start = Point.GetClosestPoint(transform.position);
+                Vector2 fleePos = (Vector2)transform.position + ((Vector2)transform.position - impostorPos).normalized * 8f;
                 Point best = null;
-                float bestDist = -1f;
-                foreach (var p in Point.Points)
+                float bestDist = float.MaxValue;
+                foreach (var p in Point.Points.FindAll(p => p.AvaiblePoints.Count > 2))
                 {
-                    float d = Vector2.Distance(p.Position, impostorPos);
-                    if (d > bestDist)
+                    float d = Vector2.Distance(p.Position, fleePos);
+                    if (d < bestDist)
                     {
                         bestDist = d;
                         best = p;
@@ -138,17 +161,17 @@ namespace FreeplayHns.Components
                     RecalculateRandomPath();
                     return;
                 }
-                Path = Point.FindPath(start, best);
+                Path = Point.FindPath(Point.GetClosestPoint(transform.position), best);
                 if (Path != null && Path.Count > 0)
                 {
                     Path.RemoveAt(0);
                 }
             }
-            catch { }
+            catch { RecalculateRandomPath(); }
         }
         public void RecalculateRandomPath()
         {
-            FirstRun = false;
+            task = null;
             try
             {
                 Path = Point.FindPath(Point.GetClosestPoint(transform.position), Point.Points[new System.Random().Next(0, Point.Points.Count)]);
@@ -159,14 +182,61 @@ namespace FreeplayHns.Components
             }
             catch { }
         }
+        public void RecalculateTaskPath()
+        {
+            try
+            {
+                task = GetClosestTask();
+                if (task != null)
+                {
+                    taskTimer = 2.5f;
+                    Path = Point.FindPath(Point.GetClosestPoint(transform.position), Point.GetClosestPoint(task.Locations[0]));
+                    if (Path != null && Path.Count > 0)
+                    {
+                        Path.RemoveAt(0);
+                    }
+                    return;
+                }
+                RecalculateRandomPath();
+            }
+            catch { RecalculateRandomPath(); task = null; }
+        }
+        public NormalPlayerTask GetClosestTask(float dis = float.MaxValue)
+        {
+            NormalPlayerTask task = null;
+            foreach (PlayerTask t in Player.myTasks)
+            {
+                if (t.HasLocation && t != task)
+                {
+                    NormalPlayerTask normalPlayerTask = t.TryCast<NormalPlayerTask>();
+                    if (normalPlayerTask != null)
+                    {
+                        float distance = Vector2.Distance(normalPlayerTask.Locations[0], transform.position);
+                        if (dis > distance)
+                        {
+                            dis = distance;
+                            task = normalPlayerTask;
+                        }
+                    }
+                }
+            }
+            return task;
+        }
         public System.Collections.IEnumerator CoStart()
         {
             while (true)
             {
                 yield return new WaitForSeconds(0.25f);
-                if (!fleeing && (Path == null || Path.Count == 0))
+                if (!fleeing && (Path == null || Path.Count == 0) && task == null)
                 {
-                    RecalculateRandomPath();
+                    if (Player.myTasks.Count > 0)
+                    {
+                        RecalculateTaskPath();
+                    }
+                    else
+                    {
+                        RecalculateRandomPath();
+                    }
                     yield return null;
                 }
             }

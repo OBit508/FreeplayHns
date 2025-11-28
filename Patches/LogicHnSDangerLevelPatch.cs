@@ -1,4 +1,6 @@
-﻿using HarmonyLib;
+﻿using BepInEx.Unity.IL2CPP.Utils.Collections;
+using FreeplayHns.Components;
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +15,10 @@ namespace FreeplayHns.Patches
         public static bool Prefix(LogicHnSDangerLevel __instance)
         {
             TutorialManagerPatch.CreatePlayers();
+            if (!TutorialManagerPatch.AmCrewmate)
+            {
+                __instance.Manager.StartCoroutine(ImpostorComp.CoDoAnimation(PlayerControl.LocalPlayer).WrapToIl2Cpp());
+            }
             HudManager.Instance.CrewmatesKilled.gameObject.SetActive(true);
             __instance.firstMusicActivation = true;
             if (!PlayerControl.LocalPlayer.Data.Role.IsImpostor)

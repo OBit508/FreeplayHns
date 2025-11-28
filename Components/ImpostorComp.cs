@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using System.IO;
 
 namespace FreeplayHns.Components
 {
@@ -21,7 +22,6 @@ namespace FreeplayHns.Components
         private float recalcTimer = 0f;
         private float stuckTimer = 0f;
         private Vector2 lastPos;
-        public bool CanPlay;
         public void Start()
         {
             Player = GetComponent<PlayerControl>();
@@ -30,7 +30,7 @@ namespace FreeplayHns.Components
         }
         public void Update()
         {
-            if (CanPlay)
+            if (Player.moveable)
             {
                 UpdateTargetDetection();
                 UpdateMovement();
@@ -69,9 +69,11 @@ namespace FreeplayHns.Components
         public float GetPathDistance()
         {
             float distance = 0;
+            Point last = null;
             foreach (Point point in Path)
             {
-                distance += Vector2.Distance(point.Position, transform.position);
+                distance += Vector2.Distance(point.Position, last == null ? transform.position : last.Position);
+                last = point;
             }
             return distance;
         }
@@ -82,7 +84,7 @@ namespace FreeplayHns.Components
                 Player.rigidbody2D.velocity = Vector2.zero;
                 return;
             }
-            Player.rigidbody2D.velocity = (Path[0].Position - (Vector2)transform.position).normalized * Player.MyPhysics.Speed;
+            Player.rigidbody2D.velocity = (Path[0].Position - (Vector2)transform.position).normalized * Player.MyPhysics.TrueSpeed;
             if (Vector2.Distance(transform.position, Path[0].Position) <= 0.35f)
             {
                 Path.RemoveAt(0);
@@ -111,10 +113,11 @@ namespace FreeplayHns.Components
         }
         public System.Collections.IEnumerator CoHunt()
         {
+            yield return new WaitForSeconds(0.2f);
             while (true)
             {
                 yield return new WaitForSeconds(0.2f);
-                if (Target != null && CanPlay && Player.moveable)
+                if (Target != null && Player.moveable)
                 {
                     if (Target.inVent)
                     {
@@ -135,8 +138,10 @@ namespace FreeplayHns.Components
         }
         public System.Collections.IEnumerator CoKill()
         {
+            yield return new WaitForSeconds(0.2f);
             while (true)
             {
+                yield return new WaitForSeconds(0.2f);
                 if (Player.moveable && Target != null && !Target.Data.IsDead && Vector2.Distance(transform.position, Target.transform.position) <= 0.8f)
                 {
                     Player.MurderPlayer(Target, MurderResultFlags.Succeeded);
@@ -148,11 +153,11 @@ namespace FreeplayHns.Components
         }
         public System.Collections.IEnumerator CoStart()
         {
-            yield return new WaitForSeconds(0.1f);
-            yield return Player.MyPhysics.CoAnimateCustom(HudManager.Instance.IntroPrefab.HnSSeekerSpawnAnim);
-            CanPlay = true;
+            yield return CoDoAnimation(Player);
             StartCoroutine(CoHunt().WrapToIl2Cpp());
             StartCoroutine(CoKill().WrapToIl2Cpp());
+            yield return new WaitForSeconds(0.2f);
+            Player.moveable = true;
             while (true)
             {
                 yield return new WaitForSeconds(0.25f);
@@ -185,6 +190,11 @@ namespace FreeplayHns.Components
                 }
                 catch { }
             }
+        }
+        public static System.Collections.IEnumerator CoDoAnimation(PlayerControl Player)
+        {
+            yield return new WaitForSeconds(0.1f);
+            yield return Player.MyPhysics.CoAnimateCustom(HudManager.Instance.IntroPrefab.HnSSeekerSpawnAnim);
         }
     }
 }

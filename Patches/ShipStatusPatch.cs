@@ -22,7 +22,7 @@ namespace FreeplayHns.Patches
         {
             if (Nodes == null)
             {
-                Nodes = JsonSerializer.Deserialize<NodesJson>(new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("AmongUsAI.Assets.SkeldPaths.json")).ReadToEnd());
+                Nodes = JsonSerializer.Deserialize<NodesJson>(new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("FreeplayHns.Assets.SkeldPaths.json")).ReadToEnd());
             }
             Point.Points.Clear();
             foreach (string node in Nodes.Nodes)

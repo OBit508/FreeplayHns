@@ -5,11 +5,11 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 
-[assembly: AssemblyVersion(AmongUsAIPlugin.ModVersion)]
-[assembly: AssemblyCompany(AmongUsAIPlugin.Owner)]
+[assembly: AssemblyVersion(FreeplayHnsPlugin.ModVersion)]
+[assembly: AssemblyCompany(FreeplayHnsPlugin.Owner)]
 [assembly: AssemblyConfiguration("Release")]
-[assembly: AssemblyDescription(AmongUsAIPlugin.ModDescription)]
-[assembly: AssemblyFileVersion(AmongUsAIPlugin.ModVersion)]
-[assembly: AssemblyInformationalVersion(AmongUsAIPlugin.ModVersion)]
-[assembly: AssemblyProduct(AmongUsAIPlugin.ModId)]
-[assembly: AssemblyTitle(AmongUsAIPlugin.ModName)]
+[assembly: AssemblyDescription(FreeplayHnsPlugin.ModDescription)]
+[assembly: AssemblyFileVersion(FreeplayHnsPlugin.ModVersion)]
+[assembly: AssemblyInformationalVersion(FreeplayHnsPlugin.ModVersion)]
+[assembly: AssemblyProduct(FreeplayHnsPlugin.ModId)]
+[assembly: AssemblyTitle(FreeplayHnsPlugin.ModName)]

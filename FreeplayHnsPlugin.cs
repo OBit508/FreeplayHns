@@ -19,29 +19,14 @@ namespace FreeplayHns
 {
 	[BepInProcess("Among Us.exe")]
 	[BepInPlugin(ModId, ModName, ModVersion)]
-	public class AmongUsAIPlugin : BasePlugin
+	public class FreeplayHnsPlugin : BasePlugin
 	{
         public Harmony Harmony { get; } = new Harmony(ModId);
-        public static SimpleCheck Helper;
         public override void Load()
 		{
-            Logger = Log;
             ClassInjector.RegisterTypeInIl2Cpp<ImpostorComp>();
             ClassInjector.RegisterTypeInIl2Cpp<CrewmateComp>();
-            ClassInjector.RegisterTypeInIl2Cpp<SimpleCheck>();
             Harmony.PatchAll();
-            Helper = AddComponent<SimpleCheck>();
-        }
-        public static ManualLogSource Logger;
-        public class SimpleCheck : MonoBehaviour
-        {
-            public void Update()
-            {
-                if (Input.GetKeyDown(KeyCode.F1))
-                {
-                    FreeplayStartHelper.Play();
-                }
-            }
         }
         public const string ModName = "AmongUsAI";
         public const string Owner = "rafael";

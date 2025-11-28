@@ -19,14 +19,14 @@
     <Compile Include="Components\CrewmateComp.cs" />
     <Compile Include="Components\ImpostorComp.cs" />
     <Compile Include="Components\Point.cs" />
-    <Compile Include="FreeplayStartHelper.cs" />
     <Compile Include="Patches\LogicGameFlowHnSPatch.cs" />
     <Compile Include="Patches\LogicHnSDangerLevelPatch.cs" />
+    <Compile Include="Patches\MainMenuManagerPatch.cs" />
     <Compile Include="Patches\ShipStatusPatch.cs" />
     <Compile Include="Patches\TutorialManagerPatch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="System\Runtime\CompilerServices\RefSafetyRulesAttribute.cs" />
-    <Compile Include="AmongUsAIPlugin.cs" />
+    <Compile Include="FreeplayHnsPlugin.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\SkeldPaths.json" />
