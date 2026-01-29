@@ -20,10 +20,13 @@ namespace FreeplayHns.Components
         private float fleeRecalcTimer = 0f;
         public float taskTimer;
         public NormalPlayerTask task;
+        public int VentUses;
+        public int MaxVentUses = 3;
         public void Start()
         {
             Player = GetComponent<PlayerControl>();
             StartCoroutine(CoStart().WrapToIl2Cpp());
+            StartCoroutine(MoveAlongPath().WrapToIl2Cpp());
             lastPos = transform.position;
             foreach (PlayerControl player in PlayerControl.AllPlayerControls)
             {
@@ -37,7 +40,6 @@ namespace FreeplayHns.Components
         {
             if (!Player.Data.IsDead)
             {
-                MoveAlongPath();
                 if (task == null)
                 {
                     DetectStuck();
@@ -73,6 +75,17 @@ namespace FreeplayHns.Components
             }
             else
             {
+                if (fleeing)
+                {
+                    if (Player.myTasks.Count > 0)
+                    {
+                        RecalculateTaskPath();
+                    }
+                    else
+                    {
+                        RecalculateRandomPath();
+                    }
+                }
                 fleeing = false;
             }
         }
@@ -89,22 +102,51 @@ namespace FreeplayHns.Components
                 }
             }
         }
-        public void MoveAlongPath()
+        public System.Collections.IEnumerator MoveAlongPath()
         {
-            if (Path == null || Path.Count == 0)
+            while (!Player.Data.IsDead)
             {
-                if (task != null)
+                if (Path == null || Path.Count == 0)
                 {
-                    DoTask();
+                    if (task != null)
+                    {
+                        DoTask();
+                    }
+                    Player.rigidbody2D.velocity = Vector2.zero;
                 }
-                Player.rigidbody2D.velocity = Vector2.zero;
-                return;
-            }
-            Point target = Path[0];
-            Player.rigidbody2D.velocity = (target.Position - (Vector2)transform.position).normalized * Player.MyPhysics.TrueSpeed;
-            if (Vector2.Distance(transform.position, target.Position) < 0.35f)
-            {
-                Path.RemoveAt(0);
+                else
+                {
+                    Point target = Path[0];
+                    if (target is VentPoint ventPoint && Path.Count > 1)
+                    {
+                        Point next = Path[1];
+                        if (next is VentPoint nextVent)
+                        {
+                            yield return Player.MyPhysics.CoEnterVent(ventPoint.vent.Id);
+                            Player.NetTransform.SnapTo(nextVent.Position);
+                            yield return Player.MyPhysics.CoExitVent(nextVent.vent.Id);
+                            VentUses++;
+                            TryDetectImpostors();
+                        }
+                        else
+                        {
+                            Player.rigidbody2D.velocity = (target.Position - (Vector2)transform.position).normalized * Player.MyPhysics.TrueSpeed;
+                            if (Vector2.Distance(transform.position, target.Position) < 0.35f)
+                            {
+                                Path.RemoveAt(0);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Player.rigidbody2D.velocity = (target.Position - (Vector2)transform.position).normalized * Player.MyPhysics.TrueSpeed;
+                        if (Vector2.Distance(transform.position, target.Position) < 0.35f)
+                        {
+                            Path.RemoveAt(0);
+                        }
+                    }
+                }
+                yield return null;
             }
         }
         public void DetectStuck()
@@ -147,7 +189,7 @@ namespace FreeplayHns.Components
                 Vector2 fleePos = (Vector2)transform.position + ((Vector2)transform.position - impostorPos).normalized * 8f;
                 Point best = null;
                 float bestDist = float.MaxValue;
-                foreach (var p in Point.Points.FindAll(p => p.AvaiblePoints.Count > 2))
+                foreach (var p in Point.Points.FindAll(p => p.GetPoints(fleeing).Count > 2))
                 {
                     float d = Vector2.Distance(p.Position, fleePos);
                     if (d < bestDist)
@@ -161,7 +203,7 @@ namespace FreeplayHns.Components
                     RecalculateRandomPath();
                     return;
                 }
-                Path = Point.FindPath(Point.GetClosestPoint(transform.position), best);
+                Path = Point.FindPath(Point.GetClosestPoint(transform.position), best, fleeing && MaxVentUses > VentUses);
                 if (Path != null && Path.Count > 0)
                 {
                     Path.RemoveAt(0);
@@ -174,7 +216,7 @@ namespace FreeplayHns.Components
             task = null;
             try
             {
-                Path = Point.FindPath(Point.GetClosestPoint(transform.position), Point.Points[new System.Random().Next(0, Point.Points.Count)]);
+                Path = Point.FindPath(Point.GetClosestPoint(transform.position), Point.Points[new System.Random().Next(0, Point.Points.Count)], fleeing && MaxVentUses > VentUses);
                 if (Path != null && Path.Count > 0)
                 {
                     Path.RemoveAt(0);
@@ -190,7 +232,7 @@ namespace FreeplayHns.Components
                 if (task != null)
                 {
                     taskTimer = 2.5f;
-                    Path = Point.FindPath(Point.GetClosestPoint(transform.position), Point.GetClosestPoint(task.Locations[0]));
+                    Path = Point.FindPath(Point.GetClosestPoint(transform.position), Point.GetClosestPoint(task.Locations[0]), fleeing && MaxVentUses > VentUses);
                     if (Path != null && Path.Count > 0)
                     {
                         Path.RemoveAt(0);

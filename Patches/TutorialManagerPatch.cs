@@ -93,6 +93,11 @@ namespace FreeplayHns.Patches
             yield return ShipStatus.Instance.CosmeticsCache.PopulateFromPlayers();
             ShipStatus.Instance.Begin();
             GameManager.Instance.StartGame();
+            CreatePlayers();
+            if (!AmCrewmate)
+            {
+                GameManager.Instance.StartCoroutine(ImpostorComp.CoDoAnimation(PlayerControl.LocalPlayer).WrapToIl2Cpp());
+            }
             ShipStatus.Instance.StartSFX();
             global::Logger.GlobalInstance.Info(string.Format("Started Freeplay Game in {0}", (MapNames)AmongUsClient.Instance.TutorialMapId), null);
             yield break;

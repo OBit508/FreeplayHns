@@ -30,6 +30,22 @@ namespace FreeplayHns.Patches
                 string[] vec = node.Split("|");
                 new Point(new Vector2(float.Parse(vec[0]), float.Parse(vec[1])), true, true, 1);
             }
+            foreach (Vent vent in __instance.AllVents)
+            {
+                new VentPoint(vent, true, true, 1);
+            }
+            List<Point> ventPoints = Point.Points.FindAll(p => p is VentPoint);
+            foreach (VentPoint ventPoint in ventPoints)
+            {
+                foreach (Vent vent in ventPoint.vent.NearbyVents)
+                {
+                    Point point = ventPoints.FirstOrDefault(p => p is VentPoint v && v.vent == vent);
+                    if (point != null)
+                    {
+                        ventPoint.AvaibleFleePoints.Add(point);
+                    }
+                }
+            }
         }
     }
     [Serializable]

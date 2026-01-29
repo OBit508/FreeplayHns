@@ -106,7 +106,7 @@ namespace FreeplayHns.Components
             {
                 if (Target != null)
                 {
-                    Path = Point.FindPath(Point.GetClosestPoint(transform.position, true), Point.GetClosestPoint(Target.transform.position, true));
+                    Path = Point.FindPath(Point.GetClosestPoint(transform.position, true), Point.GetClosestPoint(Target.transform.position, true), false);
                 }
                 stuckTimer = 0f;
             }
@@ -167,7 +167,7 @@ namespace FreeplayHns.Components
                     {
                         if (recalcTimer <= 0f || Vector2.Distance((Vector2)lastPos, Target.transform.position) > 0.6f)
                         {
-                            Path = Point.FindPath(Point.GetClosestPoint(transform.position, true), Point.GetClosestPoint(Target.transform.position, true));
+                            Path = Point.FindPath(Point.GetClosestPoint(transform.position, true), Point.GetClosestPoint(Target.transform.position, true), false);
                             if (Path != null && Path.Count > 0)
                             {
                                 Path.RemoveAt(0);
@@ -179,7 +179,7 @@ namespace FreeplayHns.Components
                     {
                         if (Path == null || Path.Count == 0)
                         {
-                            Path = Point.FindPath(Point.GetClosestPoint(transform.position, true), Point.Points[new System.Random().Next(0, Point.Points.Count - 1)]);
+                            Path = Point.FindPath(Point.GetClosestPoint(transform.position, true), Point.Points[new System.Random().Next(0, Point.Points.Count - 1)], false);
                             if (Path != null && Path.Count > 0)
                             {
                                 Path.RemoveAt(0);

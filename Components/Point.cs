@@ -11,7 +11,9 @@ namespace FreeplayHns.Components
     {
         public static List<Point> Points = new List<Point>();
         public Vector2 Position;
-        public List<Point> AvaiblePoints = new List<Point>();
+        public bool FleePoint => this is VentPoint;
+        private List<Point> AvaiblePoints = new List<Point>();
+        public List<Point> AvaibleFleePoints = new List<Point>();
         public Point(Vector2 Position, bool Connect = true, bool IgnoreColliders = false, float ConnectDistance = 0.5f)
         {
             this.Position = Position;
@@ -21,12 +23,28 @@ namespace FreeplayHns.Components
                 {
                     if (Vector2.Distance(point.Position, Position) <= ConnectDistance && (IgnoreColliders || !IgnoreColliders && !AnythingBetween(point.Position, Position)))
                     {
-                        point.AvaiblePoints.Add(this);
-                        AvaiblePoints.Add(point);
+                        point.AvaibleFleePoints.Add(this);
+                        AvaibleFleePoints.Add(point);
+                        if (!point.FleePoint)
+                        {
+                            AvaiblePoints.Add(point);
+                        }
+                        if (!FleePoint)
+                        {
+                            point.AvaiblePoints.Add(this);
+                        }
                     }
                 }
             }
             Points.Add(this);
+        }
+        public List<Point> GetPoints(bool fleeing)
+        {
+            if (fleeing)
+            {
+                return AvaibleFleePoints;
+            }
+            return AvaiblePoints;
         }
         public static Point GetClosestPoint(Vector2 position, bool ignoreColliders = false)
         {
@@ -47,7 +65,7 @@ namespace FreeplayHns.Components
         {
             return PhysicsHelpers.AnythingBetween(source, target, Constants.ShipAndObjectsMask, false);
         }
-        public static List<Point> FindPath(Point start, Point goal)
+        public static List<Point> FindPath(Point start, Point goal, bool fleeing)
         {
             MinHeap openSet = new MinHeap();
             Dictionary<Point, float> gScore = new Dictionary<Point, float>();
@@ -63,13 +81,18 @@ namespace FreeplayHns.Components
                     return ReconstructPath(start, goal, cameFrom);
                 }
                 closed.Add(current);
-                foreach (var neighbor in current.AvaiblePoints)
+                foreach (Point neighbor in current.GetPoints(fleeing))
                 {
                     if (closed.Contains(neighbor))
                     {
                         continue;
                     }
-                    float tentative = gScore[current] + Vector2.Distance(current.Position, neighbor.Position);
+                    float cost = Vector2.Distance(current.Position, neighbor.Position);
+                    if (current is VentPoint && neighbor is VentPoint)
+                    {
+                        cost = 0.001f;
+                    }
+                    float tentative = gScore[current] + cost;
                     if (!gScore.TryGetValue(neighbor, out float oldScore) || tentative < oldScore)
                     {
                         cameFrom[neighbor] = current;

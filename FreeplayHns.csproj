@@ -19,6 +19,7 @@
     <Compile Include="Components\CrewmateComp.cs" />
     <Compile Include="Components\ImpostorComp.cs" />
     <Compile Include="Components\Point.cs" />
+    <Compile Include="Components\VentPoint.cs" />
     <Compile Include="Patches\LogicGameFlowHnSPatch.cs" />
     <Compile Include="Patches\LogicHnSDangerLevelPatch.cs" />
     <Compile Include="Patches\MainMenuManagerPatch.cs" />
